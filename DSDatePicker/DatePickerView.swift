@@ -70,6 +70,8 @@ class DatePickerView: UIView {
     
     internal var maxDate: Date = .endOfCurrentYear
     
+    internal var selectDate: ((Date) -> Void)? = nil
+    
     private lazy var pickerView: UIPickerView = {
         let picker: UIPickerView = .init(frame: .zero)
         picker.contentMode = .center
@@ -279,10 +281,11 @@ extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
         let minuteRow = pickerView.selectedRow(inComponent: 2)
         
         let date = dataSource[0][dateRow].date
-//        if (Calendar.current.isDateInToday(date) == true && (hour > hourRow || (hour == hourRow && minute > minuteRow))) || date.compare(currentDate) == .orderedAscending {
-//            selectCurrentDate(animated: true)
-//        }
-        
-        print(date.addingTimeInterval(TimeInterval(hourRow * 3600)).addingTimeInterval(TimeInterval(minuteRow * 60)))
+        if (Calendar.current.isDateInToday(date) == true && (hour > hourRow || (hour == hourRow && minute > minuteRow))) || date.compare(currentDate) == .orderedAscending {
+            selectCurrentDate(animated: true)
+            selectDate?(Date().addingTimeInterval(TimeInterval(Calendar.current.timeZone.secondsFromGMT())))
+        } else {
+            selectDate?(date.addingTimeInterval(TimeInterval(hourRow * 3600)).addingTimeInterval(TimeInterval(minuteRow * 60)))
+        }
     }
 }

@@ -13,6 +13,9 @@ class ViewController: UIViewController {
         let picker = DatePickerView(frame: .zero)
         picker.backgroundColor = .white
         picker.layer.cornerRadius = 8
+        picker.selectDate = { date in
+            print(date)
+        }
         return picker
     }()
 
