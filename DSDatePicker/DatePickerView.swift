@@ -108,7 +108,10 @@ class DatePickerView: UIView {
     private var minuteComponent: [Component] = []
     
     private var currentDate: Date {
-        return Date().addingTimeInterval(TimeInterval(Calendar.current.timeZone.secondsFromGMT()))
+        let format: DateFormatter = .init()
+        format.dateFormat = "yyyyMMddHHmm"
+        let date = Date().addingTimeInterval(TimeInterval(Calendar.current.timeZone.secondsFromGMT()))
+        return format.date(from: format.string(from: date)) ?? .init()
     }
 
     internal override init(frame: CGRect) {
@@ -330,8 +333,8 @@ extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
         let dateRow = pickerView.selectedRow(inComponent: 0)
         let hour = pickerView.selectedRow(inComponent: 1)
         let minute = pickerView.selectedRow(inComponent: 2)
-        
-        let selected = dateComponent[dateRow].date.addingTimeInterval(TimeInterval(hour * 3600 + minute * 60 + 59))
+
+        let selected = dateComponent[dateRow].date.addingTimeInterval(TimeInterval(hour * 3600 + minute * 60))
         
         if selected.compare(currentDate) == .orderedAscending {
             selectCurrentDate(animated: true)
