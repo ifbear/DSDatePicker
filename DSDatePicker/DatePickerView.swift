@@ -66,12 +66,19 @@ enum Component {
 
 class DatePickerView: UIView {
     
-    internal var minDate: Date = .startOfCurrentYear
+    internal var minDate: Date = .startOfCurrentYear {
+        didSet { reloadDateComponent() }
+    }
     
-    internal var maxDate: Date = .endOfCurrentYear
+    internal var maxDate: Date = .endOfCurrentYear {
+        didSet { reloadDateComponent() }
+    }
     
     internal var selectDate: ((Date) -> Void)? = nil
     
+    private let locale: Locale = .init(identifier: "zh-hans")
+    
+    /// pickerView
     private lazy var pickerView: UIPickerView = {
         let picker: UIPickerView = .init(frame: .zero)
         picker.contentMode = .center
@@ -80,7 +87,63 @@ class DatePickerView: UIView {
         return picker
     }()
     
-    private lazy var dataSource: [[Component]] = {
+    /// titleLabel
+    private lazy var titleLabel: UILabel = {
+        let _label = UILabel(frame: .zero)
+        _label.font = .systemFont(ofSize: 12.0)
+        _label.textAlignment = .center
+        var text: String = ""
+        if let standard = TimeZone.current.localizedName(for: .standard, locale: locale) {
+            text.append(standard)
+        }
+        if let abbreviation = TimeZone.current.abbreviation() {
+            text.append("(\(abbreviation))")
+        }
+        _label.text = text
+        return _label
+    }()
+    
+    private var dateComponent: [Component] = []
+    private var hourComponent: [Component] = []
+    private var minuteComponent: [Component] = []
+    
+    private var currentDate: Date {
+        let formatter = DateFormatter.shared
+        formatter.dateFormat = "yyyy年MM月dd日"
+        let now = Date().addingTimeInterval(TimeInterval(Calendar.current.timeZone.secondsFromGMT()))
+        return formatter.date(from: formatter.string(from: now)) ?? now
+    }
+
+    internal override init(frame: CGRect) {
+        super.init(frame: frame)
+        
+        addSubview(titleLabel)
+        titleLabel.snp.makeConstraints {
+            $0.left.right.equalToSuperview()
+            $0.top.equalToSuperview().offset(12.0)
+        }
+        
+        addSubview(pickerView)
+        pickerView.snp.makeConstraints {
+            $0.top.equalTo(titleLabel.snp.bottom)
+            $0.left.right.bottom.equalToSuperview()
+        }
+        reloadDateComponent()
+        reloadHourComponent()
+        reloadMinuteComponent()
+        selectCurrentDate()
+    }
+    
+    internal required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
+}
+
+extension DatePickerView {
+    
+    /// 刷新date
+    private func reloadDateComponent() {
         let timeInterval = TimeInterval(Calendar.current.timeZone.secondsFromGMT())
         // 今年
         let min = Calendar.current.component(.year, from: minDate)
@@ -106,49 +169,32 @@ class DatePickerView: UIView {
                 }
             }
         }
+        self.dateComponent = dateComponents
+        pickerView.reloadComponent(0)
+    }
+    
+    /// 刷新小时
+    private func reloadHourComponent() {
         // 小时
         var hoursComponents: [Component] = []
         for h in 0...23 {
             hoursComponents.append(.number(h))
         }
-        // 分钟
+        self.hourComponent = hoursComponents
+    }
+    
+    /// 刷新分钟
+    private func reloadMinuteComponent() {
         var minutesComponents: [Component] = []
         for m in 0...59 {
             minutesComponents.append(.number(m))
         }
-        
-        return [dateComponents, hoursComponents, minutesComponents]
-    }()
-    
-    private var currentDate: Date {
-        let formatter = DateFormatter.shared
-        formatter.dateFormat = "yyyy年MM月dd日"
-        let now = Date().addingTimeInterval(TimeInterval(Calendar.current.timeZone.secondsFromGMT()))
-        return formatter.date(from: formatter.string(from: now)) ?? now
-    }
-
-    internal override init(frame: CGRect) {
-        super.init(frame: frame)
-        
-        addSubview(pickerView)
-        pickerView.snp.makeConstraints {
-            $0.edges.equalToSuperview()
-        }
-        
-        selectCurrentDate()
+        self.minuteComponent = minutesComponents
     }
     
-    internal required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
-}
-
-extension DatePickerView {
     // 选中当前时间
     private func selectCurrentDate(animated: Bool = false) {
-        let dateCompontents = dataSource[0]
-        for (offset, element) in dateCompontents.enumerated() {
+        for (offset, element) in dateComponent.enumerated() {
             if Calendar.current.isDateInToday(element.date) {
                 pickerView.selectRow(offset, inComponent: 0, animated: animated)
                 break
@@ -166,12 +212,16 @@ extension DatePickerView {
 
 extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
     func numberOfComponents(in pickerView: UIPickerView) -> Int {
-        dataSource.count
+        3
     }
     
     func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
-        let components = dataSource[component]
-        return components.count
+        switch component {
+        case 0: return dateComponent.count
+        case 1: return hourComponent.count
+        case 2: return minuteComponent.count
+        default: return 0
+        }
     }
     
     func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {
@@ -183,54 +233,56 @@ extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
         }
         if component == 0 {
             label.textAlignment = .right
+            label.text = dateComponent[row].title
         } else if component == 1 {
             label.textAlignment = .center
+            label.text = hourComponent[row].title
         } else {
             label.textAlignment = .left
+            label.text = minuteComponent[row].title
         }
         label.minimumScaleFactor = 0.5
-        label.font = .systemFont(ofSize: 18.0, weight: .regular)
-        label.text = dataSource[component][row].title
+        label.font = .systemFont(ofSize: 16.0, weight: .regular)
         label.adjustsFontSizeToFitWidth = true
         
-        // setSelectRowStyle(pickerView, viewForRow: row, forComponent: component)
+        setSelectRowStyle(pickerView, viewForRow: row, forComponent: component)
         
         return label
     }
     
     
     func setSelectRowStyle(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int) {
-        let systemVersion = UIDevice.current.systemVersion
+//        let systemVersion = UIDevice.current.systemVersion
         // 1.设置分割线的颜色
-        if Double(systemVersion) ?? 0 < 14.0 {
-            for view in pickerView.subviews {
-                if view.bounds.height <= 1.0 {
-                    view.backgroundColor = .gray
-                }
-            }
-        }
+//        if Double(systemVersion) ?? 0 < 14.0 {
+//            for view in pickerView.subviews {
+//                if view.bounds.height <= 1.0 {
+//                    view.backgroundColor = .gray
+//                }
+//            }
+//        }
         // 2.设置选择器中间选中行的背景颜色
-        if let contentView = pickerView.subviews.first {
-            // 设置选中行背景色
-            if let cacheViews = contentView.value(forKey: "subviewCache") as? [AnyObject],
-               let columnView = cacheViews.compactMap({ $0 as? UIView }).first,
-               let selectRowView = columnView.value(forKey: "middleContainerView") as? UIView
-            {
-                 selectRowView.backgroundColor = .white
-            }
-            if Double(systemVersion) ?? 0 > 14.0 {
-                // ①隐藏中间选择行的背景样式
-                if let lastView = pickerView.subviews.last {
-                    lastView.isHidden = true
-                }
-                // ②清除iOS14上选择器默认的内边距
-                clearPickerAllSubviews(contentView)
-            }
-        }
+//        if let contentView = pickerView.subviews.first {
+//            // 设置选中行背景色
+//            if let cacheViews = contentView.value(forKey: "subviewCache") as? [AnyObject],
+//               let columnView = cacheViews.compactMap({ $0 as? UIView }).first,
+//               let selectRowView = columnView.value(forKey: "middleContainerView") as? UIView
+//            {
+//                 selectRowView.backgroundColor = .white
+//            }
+//            if Double(systemVersion) ?? 0 > 14.0 {
+//                // ①隐藏中间选择行的背景样式
+//                if let lastView = pickerView.subviews.last {
+//                    lastView.isHidden = true
+//                }
+//                // ②清除iOS14上选择器默认的内边距
+//                clearPickerAllSubviews(contentView)
+//            }
+//        }
         // 3.设置选择器中间选中行的字体颜色/字体大小
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.01) {
             if let label = pickerView.view(forRow: row, forComponent: component) as? UILabel {
-                label.font = .systemFont(ofSize: 18.0, weight: .bold)
+                label.font = .systemFont(ofSize: 16.0, weight: .medium)
             }
         }
     }
@@ -272,6 +324,10 @@ extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
         }
     }
     
+    func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat {
+        return 40.0
+    }
+    
     func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
         // 判断时间小于当前时间，选中当前时间
         let hour = Calendar.current.component(.hour, from: Date())
@@ -280,7 +336,7 @@ extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
         let hourRow = pickerView.selectedRow(inComponent: 1)
         let minuteRow = pickerView.selectedRow(inComponent: 2)
         
-        let date = dataSource[0][dateRow].date
+        let date = dateComponent[dateRow].date
         if (Calendar.current.isDateInToday(date) == true && (hour > hourRow || (hour == hourRow && minute > minuteRow))) || date.compare(currentDate) == .orderedAscending {
             selectCurrentDate(animated: true)
             selectDate?(Date().addingTimeInterval(TimeInterval(Calendar.current.timeZone.secondsFromGMT())))

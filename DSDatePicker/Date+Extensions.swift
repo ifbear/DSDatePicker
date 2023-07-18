@@ -25,4 +25,12 @@ extension Date {
         components.second = -1
         return calendar.date(byAdding: components, to: startOfCurrentYear)!
     }
+    
+    internal static func date(of year: Int, to date: Date) -> Date {
+        let calendar = Calendar.current
+        var components = DateComponents()
+        components.year = year
+        components.second = -1
+        return calendar.date(byAdding: components, to: date)!
+    }
 }

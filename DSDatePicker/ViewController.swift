@@ -11,6 +11,8 @@ class ViewController: UIViewController {
     
     private lazy var datePicker: DatePickerView = {
         let picker = DatePickerView(frame: .zero)
+        picker.minDate = .init()
+        picker.maxDate = .date(of: 5, to: .endOfCurrentYear)
         picker.backgroundColor = .white
         picker.layer.cornerRadius = 8
         picker.selectDate = { date in
@@ -27,7 +29,7 @@ class ViewController: UIViewController {
         datePicker.snp.makeConstraints {
             $0.left.right.equalToSuperview().inset(40)
             $0.top.equalToSuperview().offset(100)
-            $0.height.equalTo(240)
+            $0.height.equalTo(271.0)
         }
     }
 
