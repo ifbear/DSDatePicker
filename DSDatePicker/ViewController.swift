@@ -15,7 +15,7 @@ class ViewController: UIViewController {
         picker.maxDate = .date(of: 5, to: .endOfCurrentYear)
         picker.backgroundColor = .white
         picker.layer.cornerRadius = 8
-        picker.selectDate = { date in
+        picker.callbackHandler = { date in
             print(date)
         }
         return picker

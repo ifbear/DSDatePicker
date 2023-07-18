@@ -74,7 +74,7 @@ class DatePickerView: UIView {
         didSet { reloadDateComponent() }
     }
     
-    internal var selectDate: ((Date) -> Void)? = nil
+    internal var callbackHandler: ((Date) -> Void)? = nil
     
     private let locale: Locale = .init(identifier: "zh-hans")
     
@@ -108,10 +108,7 @@ class DatePickerView: UIView {
     private var minuteComponent: [Component] = []
     
     private var currentDate: Date {
-        let formatter = DateFormatter.shared
-        formatter.dateFormat = "yyyy年MM月dd日"
-        let now = Date().addingTimeInterval(TimeInterval(Calendar.current.timeZone.secondsFromGMT()))
-        return formatter.date(from: formatter.string(from: now)) ?? now
+        return Date().addingTimeInterval(TimeInterval(Calendar.current.timeZone.secondsFromGMT()))
     }
 
     internal override init(frame: CGRect) {
@@ -211,7 +208,7 @@ extension DatePickerView {
 }
 
 extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
-    func numberOfComponents(in pickerView: UIPickerView) -> Int {
+    internal func numberOfComponents(in pickerView: UIPickerView) -> Int {
         3
     }
     
@@ -224,7 +221,7 @@ extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
         }
     }
     
-    func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {
+    internal func pickerView(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int, reusing view: UIView?) -> UIView {
         let label: UILabel
         if let value = view as? UILabel {
             label = value
@@ -251,7 +248,7 @@ extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
     }
     
     
-    func setSelectRowStyle(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int) {
+    private func setSelectRowStyle(_ pickerView: UIPickerView, viewForRow row: Int, forComponent component: Int) {
 //        let systemVersion = UIDevice.current.systemVersion
         // 1.设置分割线的颜色
 //        if Double(systemVersion) ?? 0 < 14.0 {
@@ -287,7 +284,7 @@ extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
         }
     }
     
-    func clearPickerAllSubviews(_ view: UIView) {
+    private func clearPickerAllSubviews(_ view: UIView) {
         if view.subviews.count == 0 || view is UILabel { return }
         for v in view.subviews {
             if String(describing: v.self) == "UIPickerColumnView" {
@@ -311,7 +308,7 @@ extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
         
     }
     
-    func pickerView(_ pickerView: UIPickerView, widthForComponent component: Int) -> CGFloat {
+    internal func pickerView(_ pickerView: UIPickerView, widthForComponent component: Int) -> CGFloat {
         switch component {
         case 0:
             return bounds.size.width * 0.5
@@ -324,24 +321,23 @@ extension DatePickerView: UIPickerViewDelegate, UIPickerViewDataSource {
         }
     }
     
-    func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat {
+    internal func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat {
         return 40.0
     }
     
-    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+    internal func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
         // 判断时间小于当前时间，选中当前时间
-        let hour = Calendar.current.component(.hour, from: Date())
-        let minute = Calendar.current.component(.minute, from: Date())
         let dateRow = pickerView.selectedRow(inComponent: 0)
-        let hourRow = pickerView.selectedRow(inComponent: 1)
-        let minuteRow = pickerView.selectedRow(inComponent: 2)
+        let hour = pickerView.selectedRow(inComponent: 1)
+        let minute = pickerView.selectedRow(inComponent: 2)
         
-        let date = dateComponent[dateRow].date
-        if (Calendar.current.isDateInToday(date) == true && (hour > hourRow || (hour == hourRow && minute > minuteRow))) || date.compare(currentDate) == .orderedAscending {
+        let selected = dateComponent[dateRow].date.addingTimeInterval(TimeInterval(hour * 3600 + minute * 60 + 59))
+        
+        if selected.compare(currentDate) == .orderedAscending {
             selectCurrentDate(animated: true)
-            selectDate?(Date().addingTimeInterval(TimeInterval(Calendar.current.timeZone.secondsFromGMT())))
+            callbackHandler?(currentDate)
         } else {
-            selectDate?(date.addingTimeInterval(TimeInterval(hourRow * 3600)).addingTimeInterval(TimeInterval(minuteRow * 60)))
+            callbackHandler?(selected)
         }
     }
 }
